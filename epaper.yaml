@@ -1,0 +1,1139 @@
+globals:
+  - id: forecast_nums
+    type: std::vector<int>
+  - id: notification_nums
+    type: std::vector<int>
+  - id: data_updated
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: initial_data_received
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+substitutions:
+  devicename: "epaper"
+
+esphome:
+  name: $devicename
+  comment: "Waveshare epaper"
+  name_add_mac_suffix: false
+  includes:
+    # Load in std libs (map, vector)
+    - includes/OtherLibs.h
+  project:
+    name: "waveshare.epaper"
+    version: "1"
+  on_boot:
+    priority: -100
+    then:
+      - wait_until:
+          api.connected:
+      # Wait for some valid temp data
+      - wait_until:
+          sensor.in_range:
+            id: outdoor_temperature
+            above: -460
+      - delay: 1s
+      #- component.update: homeassistant_time
+      #- component.update: battery_voltage
+      # Give some time to get the rest of the mqtt data
+      - component.update: epaperdisplay
+      # Wait for display update cycle
+      - delay: 6s
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "uFixWC2JLk0QT9Rgul9J0oUWd54kAiY5aQVznwVjc7M="
+
+ota:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esphome-Web-47B9B0"
+    password: "s82GHwbu8hBm"
+
+captive_portal:
+
+# Check whether the display needs to be refreshed every minute,
+# based on whether new data is received or motion is detected.
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    on_time:
+      - seconds: 0
+        minutes: /1
+        then:
+          - if:
+              condition:
+                lambda: 'return id(data_updated) == true;'
+              then:
+                - lambda: 'id(initial_data_received) = true;'
+                - logger.log: "Sensor data updated: Refreshing display..."
+                - component.update: epaperdisplay
+                - lambda: 'id(data_updated) = false;'
+              else:
+                - logger.log: "No sensors updated - skipping display refresh."
+
+# Enable Web server
+web_server:
+  port: 80
+
+spi:
+  clk_pin: GPIO13
+  mosi_pin: GPIO14
+  id: waveshare_spi
+
+#esp32_ble_tracker:
+#  scan_parameters:
+#    active: false
+
+sensor:
+#  - platform: xiaomi_hhccjcy01
+#    mac_address: '94:2B:FF:5C:91:61'
+#    temperature:
+#      name: "Zitrone Temperature"
+#    moisture:
+#      name: "Zitrone Moisture"
+#    illuminance:
+#      name: "Zitrone Illuminance"
+#    conductivity:
+#      name: "Zitrone Soil Conductivity"
+#    battery_level:
+#      name: "Zitrone Battery Level"
+
+  - platform: wifi_signal
+    name: "${devicename} - Wifi Signal"
+    update_interval: 60s
+    icon: mdi:wifi
+
+  - platform: uptime
+    name: "${devicename} - Uptime"
+    update_interval: 60s
+    icon: mdi:clock-outline
+#### to edit
+  - platform: homeassistant
+    name: "Outdoor Temperature"
+    id: outdoor_temperature
+    internal: true
+    entity_id: sensor.netatmo_langerma_wohnzimmer_balkon_temperature
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Outdoor Humidity"
+    id: outdoor_humidity
+    internal: true
+    entity_id: sensor.netatmo_langerma_wohnzimmer_balkon_humidity
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Badezimmer Temperature"
+    id: badezimmer_temperature
+    internal: true
+    entity_id: sensor.wohnzimmer_wohnzimmer_wohnzimmer_badezimmer_temperature
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Schlafzimmer Temperature"
+    id: schlafzimmer_temperature
+    internal: true
+    entity_id: sensor.netatmo_langerma_wohnzimmer_schlafzimmer_temperature
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Wohnzimmer Temperature"
+    id: wohnzimmer_temperature
+    internal: true
+    entity_id: sensor.netatmo_langerma_wohnzimmer_temperature
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Badezimmer Humidity"
+    id: badezimmer_humidity
+    internal: true
+    entity_id: sensor.wohnzimmer_wohnzimmer_wohnzimmer_badezimmer_humidity
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Schlafzimmer Humidity"
+    id: schlafzimmer_humidity
+    internal: true
+    entity_id: sensor.netatmo_langerma_wohnzimmer_schlafzimmer_humidity
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Wohnzimmer Humidity"
+    id: wohnzimmer_humidity
+    internal: true
+    entity_id: sensor.netatmo_langerma_wohnzimmer_humidity
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "forecast high"
+    id: forecast_high
+    internal: true
+    entity_id: sensor.forecast_high
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "forecast low"
+    id: forecast_low
+    internal: true
+    entity_id: sensor.forecast_low
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "wind speed"
+    id: wind_speed
+    internal: true
+    entity_id: sensor.wind_speed
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+  
+  - platform: homeassistant
+    name: "wind bearing"
+    id: wind_bearing
+    internal: true
+    entity_id: sensor.wind_bearing
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "rain daily"
+    id: rain_daily
+    internal: true
+    entity_id: sensor.rain_daily
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Weather Condition"
+    id: weather_condition
+    internal: true
+    entity_id: sensor.current_weather_condition_num
+    on_value:
+      then:
+         - lambda: 'id(data_updated) = true;'
+
+binary_sensor:
+  - platform: template
+    name: "Show QR Code"
+    id: show_qr_code
+    internal: true
+
+  - platform: template
+    name: "Show Indoor Temp"
+    id: show_indoor_temp
+    internal: true
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${devicename} - IP Address"
+    ssid:
+      name: "${devicename} - Wi-Fi SSID"
+    bssid:
+      name: "${devicename} - Wi-Fi BSSID"
+  - platform: version
+    name: "${devicename} - ESPHome Version"
+    hide_timestamp: true
+
+  - platform: homeassistant
+    name: "Upcoming Event 1 Date"
+    id: event_1_date
+    internal: true
+    entity_id: sensor.upcoming_event_1_date_2
+  - platform: homeassistant
+    name: "Upcoming Event 1 Name"
+    id: event_1_name
+    internal: true
+    entity_id: sensor.upcoming_event_1_name_2
+  - platform: homeassistant
+    name: "Upcoming Event 1 Icon"
+    id: event_1_icon
+    internal: true
+    entity_id: sensor.upcoming_event_1_icon_2
+  - platform: homeassistant
+    name: "Upcoming Event 2 Date"
+    id: event_2_date
+    internal: true
+    entity_id: sensor.upcoming_event_2_date_2
+  - platform: homeassistant
+    name: "Upcoming Event 2 Name"
+    id: event_2_name
+    internal: true
+    entity_id: sensor.upcoming_event_2_name_2
+  - platform: homeassistant
+    name: "Upcoming Event 2 Icon"
+    id: event_2_icon
+    internal: true
+    entity_id: sensor.upcoming_event_2_icon_2
+  - platform: homeassistant
+    name: "Upcoming Event 3 Date"
+    id: event_3_date
+    internal: true
+    entity_id: sensor.upcoming_event_3_date_2
+  - platform: homeassistant
+    name: "Upcoming Event 3 Name"
+    id: event_3_name
+    internal: true
+    entity_id: sensor.upcoming_event_3_name_2
+  - platform: homeassistant
+    name: "Upcoming Event 3 Icon"
+    id: event_3_icon
+    internal: true
+    entity_id: sensor.upcoming_event_3_icon_2
+
+
+  - platform: homeassistant
+    name: "Forecast Conditions"
+    id: forecast_conditions
+    internal: true
+    entity_id: sensor.forecast_condition_nums
+    on_value:
+      - if:
+          condition:
+            - lambda: 'return x.length() == 10;'
+          then:
+            - lambda: |-
+                id(forecast_nums).clear();
+                for(int f=0; f < 10; f += 2) {
+                  id(forecast_nums).push_back( atoi(x.substr(f,2).c_str()) );
+                }
+
+  - platform: homeassistant
+    name: "Notification String"
+    id: notification_string
+    internal: true
+    entity_id: sensor.epaper_notifications
+    on_value:
+      - if:
+          condition:
+            - lambda: 'return x.length() > 1;'
+          then:
+            - lambda: |-
+                id(data_updated) = true;
+                id(notification_nums).clear();
+                for(int c=0; c < x.length(); c += 1) {
+                  if( x.substr(c,1) == "1" ) {
+                    id(notification_nums).push_back( c );
+                  }
+                }
+
+  - platform: homeassistant
+    name: "Show QR Code Payload"
+    id: show_qr_code_payload
+    internal: true
+    entity_id: binary_sensor.show_qr_code
+    on_value:
+      then:
+        - binary_sensor.template.publish:
+            id: show_qr_code
+            state: !lambda 'return id(show_qr_code_payload).state == "on";'
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    name: "Show Indoor Temp Payload"
+    id: show_indoor_temp_payload
+    internal: true
+    entity_id: binary_sensor.show_indoor_temp
+    on_value:
+      then:
+        - binary_sensor.template.publish:
+            id: show_indoor_temp
+            state: !lambda 'return id(show_indoor_temp_payload).state == "on";'
+        - lambda: 'id(data_updated) = true;'
+
+image:
+  # Weather conditions
+  - file: "icon-bmp/weather/clear-night.bmp"
+    id: clear_night
+  - file: "icon-bmp/weather/cloudy.bmp"
+    id: cloudy
+  - file: "icon-bmp/weather/exceptional.bmp"
+    id: exceptional
+  - file: "icon-bmp/weather/fog.bmp"
+    id: fog
+  - file: "icon-bmp/weather/hail.bmp"
+    id: hail
+  - file: "icon-bmp/weather/lightning-rainy.bmp"
+    id: lightning_rainy
+  - file: "icon-bmp/weather/lightning.bmp"
+    id: lightning
+  - file: "icon-bmp/weather/partlycloudy-day.bmp"
+    id: partlycloudy_day
+  - file: "icon-bmp/weather/partlycloudy-night.bmp"
+    id: partlycloudy_night
+  - file: "icon-bmp/weather/pouring.bmp"
+    id: pouring
+  - file: "icon-bmp/weather/rainy.bmp"
+    id: rainy
+  - file: "icon-bmp/weather/snowy-rainy.bmp"
+    id: snowy_rainy
+  - file: "icon-bmp/weather/snowy.bmp"
+    id: snowy
+  - file: "icon-bmp/weather/sunny.bmp"
+    id: sunny
+  - file: "icon-bmp/weather/windy-variant.bmp"
+    id: windy_variant
+  - file: "icon-bmp/weather/windy.bmp"
+    id: windy
+  # Small weather condition icons
+  - file: "icon-bmp/weather-small/clear-night-small.bmp"
+    id: clear_night_small
+  - file: "icon-bmp/weather-small/cloudy-small.bmp"
+    id: cloudy_small
+  - file: "icon-bmp/weather-small/exceptional-small.bmp"
+    id: exceptional_small
+  - file: "icon-bmp/weather-small/fog-small.bmp"
+    id: fog_small
+  - file: "icon-bmp/weather-small/hail-small.bmp"
+    id: hail_small
+  - file: "icon-bmp/weather-small/lightning-rainy-small.bmp"
+    id: lightning_rainy_small
+  - file: "icon-bmp/weather-small/lightning-small.bmp"
+    id: lightning_small
+  - file: "icon-bmp/weather-small/partlycloudy-day-small.bmp"
+    id: partlycloudy_day_small
+  - file: "icon-bmp/weather-small/partlycloudy-night-small.bmp"
+    id: partlycloudy_night_small
+  - file: "icon-bmp/weather-small/pouring-small.bmp"
+    id: pouring_small
+  - file: "icon-bmp/weather-small/rainy-small.bmp"
+    id: rainy_small
+  - file: "icon-bmp/weather-small/snowy-rainy-small.bmp"
+    id: snowy_rainy_small
+  - file: "icon-bmp/weather-small/snowy-small.bmp"
+    id: snowy_small
+  - file: "icon-bmp/weather-small/sunny-small.bmp"
+    id: sunny_small
+  - file: "icon-bmp/weather-small/windy-variant-small.bmp"
+    id: windy_variant_small
+  - file: "icon-bmp/weather-small/windy-small.bmp"
+    id: windy_small
+  # Event icons
+  - file: "mdi:baby-carriage"
+    id: baby_carriage
+    resize: 36x36
+  - file: "mdi:bone"
+    id: bone
+    resize: 36x36
+  - file: "mdi:cake"
+    id: cake_variant
+    resize: 36x36
+  - file: "mdi:calendar-account"
+    id: calendar
+    resize: 36x36
+  - file: "mdi:clover"
+    id: clover
+    resize: 36x36
+  - file: "mdi:egg-easter"
+    id: egg_easter
+    resize: 36x36
+  - file: "mdi:flag"
+    id: flag
+    resize: 36x36
+  - file: "mdi:football"
+    id: football
+    resize: 36x36
+  - file: "mdi:halloween"
+    id: halloween
+    resize: 36x36
+  - file: "mdi:heart-multiple"
+    id: heart_multiple
+    resize: 36x36
+  - file: "mdi:deathly-hallows"
+    id: heart
+    resize: 36x36
+  - file: "mdi:history"
+    id: history
+    resize: 36x36
+  - file: "mdi:music-circle"
+    id: microphone
+    resize: 36x36
+  - file: "mdi:mother-heart"
+    id: mother_heart
+    resize: 36x36
+  - file: "mdi:mustache"
+    id: mustache
+    resize: 36x36
+  - file: "mdi:party-popper"
+    id: party_popper
+    resize: 36x36
+  - file: "mdi:pine-tree"
+    id: pine_tree
+    resize: 36x36
+  - file: "mdi:shield-star"
+    id: shield_star
+    resize: 36x36
+  - file: "mdi:shovel"
+    id: shovel
+    resize: 36x36
+  - file: "mdi:star"
+    id: star
+    resize: 36x36
+  - file: "mdi:taco"
+    id: taco
+    resize: 36x36
+  - file: "mdi:turkey"
+    id: turkey
+    resize: 36x36
+  # Notification Large
+  - file: "icon-bmp/notification-large/dishwasher-alert.bmp"
+    id: dishwasher_alert_large
+  - file: "icon-bmp/notification-large/dog-bowl.bmp"
+    id: dog_bowl_large
+  - file: "icon-bmp/notification-large/dump-truck.bmp"
+    id: dump_truck_large
+  - file: "icon-bmp/notification-large/recycle.bmp"
+    id: recycle_large
+  - file: "icon-bmp/notification-large/robot-vacuum-variant.bmp"
+    id: robot_vacuum_variant_large
+  - file: "icon-bmp/notification-large/trash-can-outline.bmp"
+    id: trash_can_outline_large
+  - file: "icon-bmp/notification-large/washing-machine-alert.bmp"
+    id: washing_machine_alert_large
+  - file: "icon-bmp/notification-large/wifi-alert.bmp"
+    id: wifi_alert_large
+  - file: "icon-bmp/notification-large/battery-low.bmp"
+    id: battery_low_large
+  # Notification Medium
+  - file: "icon-bmp/notification-med/dishwasher-alert.bmp"
+    id: dishwasher_alert_med
+  - file: "icon-bmp/notification-med/dog-bowl.bmp"
+    id: dog_bowl_med
+  - file: "icon-bmp/notification-med/dump-truck.bmp"
+    id: dump_truck_med
+  - file: "icon-bmp/notification-med/recycle.bmp"
+    id: recycle_med
+  - file: "icon-bmp/notification-med/robot-vacuum-variant.bmp"
+    id: robot_vacuum_variant_med
+  - file: "icon-bmp/notification-med/trash-can-outline.bmp"
+    id: trash_can_outline_med
+  - file: "icon-bmp/notification-med/washing-machine-alert.bmp"
+    id: washing_machine_alert_med
+  - file: "icon-bmp/notification-med/wifi-alert.bmp"
+    id: wifi_alert_med
+  - file: "icon-bmp/notification-med/battery-low.bmp"
+    id: battery_low_med
+  # Notification Small
+  - file: "icon-bmp/notification-small/dishwasher-alert.bmp"
+    id: dishwasher_alert_small
+  - file: "icon-bmp/notification-small/dog-bowl.bmp"
+    id: dog_bowl_small
+  - file: "icon-bmp/notification-small/dump-truck.bmp"
+    id: dump_truck_small
+  - file: "icon-bmp/notification-small/recycle.bmp"
+    id: recycle_small
+  - file: "icon-bmp/notification-small/robot-vacuum-variant.bmp"
+    id: robot_vacuum_variant_small
+  - file: "icon-bmp/notification-small/trash-can-outline.bmp"
+    id: trash_can_outline_small
+  - file: "icon-bmp/notification-small/washing-machine-alert.bmp"
+    id: washing_machine_alert_small
+  - file: "icon-bmp/notification-small/wifi-alert.bmp"
+    id: wifi_alert_small
+  - file: "icon-bmp/notification-small/battery-low.bmp"
+    id: battery_low_small
+  # Other icons
+  - file: "icon-bmp/weather-small/wind-small.bmp"
+    id: wind_small
+  - file: "icon-bmp/weather-small/water-percent.bmp"
+    id: humidity_small
+  - file: "icon-bmp/weather-small/rain-small.bmp"
+    id: rain_small
+  - file: "icon-bmp/wifi-qrcode.png"
+    id: wifi_qr
+    resize: 128x128
+  - file: "icon-bmp/events/calendar.bmp"
+    id: event_title
+  - file: "icon-bmp/wifi-lock.bmp"
+    id: wifi_title
+  - file: "mdi:baby-face-outline"
+    id: home_floor_1
+    resize: 36x36
+  - file: "mdi:bed-double-outline"
+    id: home_floor_2
+    resize: 36x36
+  - file: "mdi:beer-outline"
+    id: home_floor_b
+    resize: 36x36
+  - file: "icon-bmp/weather-small/thermometer.bmp"
+    id: thermometer_small
+
+font:
+  - file: "gfonts://Roboto Condensed@Bold"
+    id: roboto_bold_24
+    size: 24
+    glyphs:
+      ['&', '@', '!', ',', '.', '?', '"', '%', '(', ')', '+', '-', '_', ':', '°', '|',
+       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+       'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+       'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+       'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+       'u', 'v', 'w', 'x', 'y', 'z','å', 'Ä', 'ä', 'Ö', 'ö', 'Ü', 'ü', '/']
+  - file: "gfonts://Roboto Condensed@Regular"
+    id: roboto_regular_20
+    size: 20
+    glyphs:
+      ['&', '@', '!', ',', '.', '?', '"', '%', '(', ')', '+', '-', '_', ':', '°', '|',
+       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+       'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+       'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+       'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+       'u', 'v', 'w', 'x', 'y', 'z','å', 'Ä', 'ä', 'Ö', 'ö', 'Ü', 'ü', '/']
+  - file: "gfonts://Roboto Condensed@Regular"
+    id: roboto_regular_12
+    size: 12
+    glyphs:
+      ['&', '@', '!', ',', '.', '?', '"', '%', '(', ')', '+', '-', '_', ':', '°', '|',
+       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+       'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+       'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+       'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+       'u', 'v', 'w', 'x', 'y', 'z','å', 'Ä', 'ä', 'Ö', 'ö', 'Ü', 'ü', '/']
+  - file: "gfonts://Roboto Condensed@Bold"
+    id: roboto_bold_100
+    size: 100
+    glyphs: '0123456789-°na '
+  - file: "gfonts://Roboto Condensed@Bold"
+    id: roboto_bold_48
+    size: 48
+    glyphs: 'FMSTWadehinorstuy '
+  - file: "gfonts://Roboto Condensed@Regular"
+    id: roboto_regular_36
+    size: 36
+    glyphs: 'ADFJMNOSabceghilmnoprstuvy '
+
+display:
+  - platform: waveshare_epaper
+    id: epaperdisplay
+    cs_pin: GPIO15
+    dc_pin: GPIO27
+    busy_pin: GPIO25
+    reset_pin: GPIO26
+    spi_id: waveshare_spi
+    model: 7.50inV2alt
+    #model: 7.50inV2
+    rotation: 180
+    #reset_duration: 500ms
+    update_interval: never
+    lambda: |-
+      //it.printf(0, 0, id(roboto_bold_24), "Aussentemperatur: %.1f", id(outdoor_temperature).state);
+      //it.printf(0, 40, id(roboto_bold_24), "Innentemperatur: %.1f", id(wohnzimmer_temperature).state);
+      // Skip draw if values aren't ready
+      if( isnan(id(outdoor_temperature).raw_state) )
+        return;
+      
+      /////////
+      // Constants
+      //
+      #define screen_width 800
+      #define screen_height 480
+
+      std::map<std::string, const char*> month_map = {
+        {"01", "Jan"},
+        {"02", "Feb"},
+        {"03", "Mar"},
+        {"04", "Apr"},
+        {"05", "May"},
+        {"06", "Jun"},
+        {"07", "Jul"},
+        {"08", "Aug"},
+        {"09", "Sep"},
+        {"10", "Oct"},
+        {"11", "Nov"},
+        {"12", "Dec"}
+      };
+      std::map<std::string, esphome::display::BaseImage*> event_icon_map = {
+        {"baby-carriage", baby_carriage},
+        {"bone", bone},
+        {"cake-variant", cake_variant},
+        {"clover", clover},
+        {"egg-easter", egg_easter},
+        {"flag", flag},
+        {"football", football},
+        {"halloween", halloween},
+        {"heart", heart},
+        {"heart-multiple", heart_multiple},
+        {"microphone", microphone},
+        {"mother-heart", mother_heart},
+        {"mustache", mustache},
+        {"party-popper", party_popper},
+        {"pine-tree", pine_tree},
+        {"shield-star", shield_star},
+        {"shovel", shovel},
+        {"star", star},
+        {"taco", taco},
+        {"turkey", turkey}
+      };
+      esphome::display::BaseImage* weather_icon_map[16] = {
+        clear_night,
+        cloudy,
+        exceptional,
+        fog,
+        hail,
+        lightning_rainy,
+        lightning,
+        partlycloudy_day,
+        partlycloudy_night,
+        pouring,
+        rainy,
+        snowy_rainy,
+        snowy,
+        sunny,
+        windy_variant,
+        windy
+      };
+      esphome::display::BaseImage* small_weather_icon_map[16] = {
+        clear_night_small,
+        cloudy_small,
+        exceptional_small,
+        fog_small,
+        hail_small,
+        lightning_rainy_small,
+        lightning_small,
+        partlycloudy_day_small,
+        partlycloudy_night_small,
+        pouring_small,
+        rainy_small,
+        snowy_rainy_small,
+        snowy_small,
+        sunny_small,
+        windy_variant_small,
+        windy_small
+      };
+      #define notification_type_count 9
+      esphome::display::BaseImage* notification_icon_map[notification_type_count*3] = {
+        trash_can_outline_large,
+        dump_truck_large,
+        recycle_large,
+        robot_vacuum_variant_large,
+        washing_machine_alert_large,
+        dishwasher_alert_large,
+        dog_bowl_large,
+        wifi_alert_large,
+        battery_low_large,
+
+        trash_can_outline_med,
+        dump_truck_med,
+        recycle_med,
+        robot_vacuum_variant_med,
+        washing_machine_alert_med,
+        dishwasher_alert_med,
+        dog_bowl_med,
+        wifi_alert_med,
+        battery_low_med,
+
+        trash_can_outline_small,
+        dump_truck_small,
+        recycle_small,
+        robot_vacuum_variant_small,
+        washing_machine_alert_small,
+        dishwasher_alert_small,
+        dog_bowl_small,
+        wifi_alert_small,
+        battery_low_small
+      };
+      
+      // Center divider
+      it.filled_rectangle(it.get_width()/2-3, 12, 6, it.get_height()-24);
+
+
+      ////////
+      // Weather
+      //
+      #define gauge_radius 42
+      #define gauge_thickness 4
+      #define gauge_center_y_higher 390
+      #define forecasts_y_higher 310
+
+      int gauge_center_y = 435;
+      int forecasts_y = 370;
+
+      #define weather_condition_x 16
+      #define weather_condition_y 0
+      #define current_temp_x (weather_condition_x + 180)
+      #define current_temp_y (weather_condition_y + 164)
+      #define high_low_x current_temp_x
+      #define high_low_y current_temp_y + 54
+
+      #define weather_condition_idx (id(weather_condition).state)
+      if (weather_condition_idx == 1 || weather_condition_idx == 2 || 
+            weather_condition_idx == 7 || weather_condition_idx == 8 ) {
+        forecasts_y = forecasts_y_higher;
+        gauge_center_y = gauge_center_y_higher;
+      }
+      if (weather_condition_idx >= 0 && weather_condition_idx < 16)
+        it.image(weather_condition_x, weather_condition_y, id(&weather_icon_map[(int)weather_condition_idx]));
+
+      #define forecast_icon_side 32
+      #define forecasts_radius 20
+      #define forecasts_spacing 16
+      #define forecasts_total_width (forecasts_radius*2*6 + forecasts_spacing*5)
+      #define forecasts_x_start ((screen_width/2-forecasts_total_width)/2+forecasts_radius)
+
+      // Loop through next 6 hours of forecast data
+      #define forecast_vector id(forecast_nums)
+
+      for(int i=0; i<forecast_vector.size(); i++) {
+        // X coord for surrounding circle
+        #define forecast_x (forecasts_x_start+i*(forecasts_spacing+2*forecasts_radius))
+        // Images anchor at top left
+        #define forecast_icon_x (forecast_x - forecast_icon_side/2)
+        #define forecast_icon_y (forecasts_y - forecast_icon_side/2)
+        #define forecast_condition_num forecast_vector[i]
+
+        if (forecast_condition_num >= 0 && forecast_condition_num < 16) {
+          it.image(forecast_icon_x, forecast_icon_y, id(&small_weather_icon_map[forecast_condition_num]));
+        }
+
+        it.circle(forecast_x, forecasts_y, forecasts_radius);
+
+        if(i>0) {
+          it.line(forecast_x-forecasts_radius, forecasts_y, forecast_x-forecasts_radius-forecasts_spacing, forecasts_y);
+        }
+      }
+
+      int gauge_main_text_height = gauge_center_y - 15;
+      int gauge_sub_text_height = gauge_center_y + 3;
+      int gauge_icon_height = gauge_center_y + 12;
+
+      // Humidity gauge
+      #define humidity_gauge_center_x 76
+      it.filled_circle(humidity_gauge_center_x, gauge_center_y, gauge_radius, COLOR_ON);
+      it.filled_circle(humidity_gauge_center_x, gauge_center_y, gauge_radius-gauge_thickness, COLOR_OFF);
+      it.image(humidity_gauge_center_x - 11, gauge_icon_height, id(humidity_small));
+
+      // Rain gauge
+      #define rain_gauge_center_x 200
+      it.filled_circle(rain_gauge_center_x, gauge_center_y, gauge_radius, COLOR_ON);
+      it.filled_circle(rain_gauge_center_x, gauge_center_y, gauge_radius-gauge_thickness, COLOR_OFF);
+      it.image(rain_gauge_center_x - 11, gauge_icon_height, id(rain_small));
+
+      // Wind gauge
+      #define wind_gauge_center_x 324
+      it.filled_circle(wind_gauge_center_x, gauge_center_y, gauge_radius, COLOR_ON);
+      it.filled_circle(wind_gauge_center_x, gauge_center_y, gauge_radius-gauge_thickness, COLOR_OFF);
+      // Wind Bearing
+      int wind_bearing_value = id(wind_bearing).state;
+      #define bearing_x (gauge_radius*cos(wind_bearing_value))
+      #define bearing_y (gauge_radius*sin(wind_bearing_value))
+      if(wind_bearing_value >= 0 && wind_bearing_value < 360)
+        it.line(wind_gauge_center_x, gauge_center_y, wind_gauge_center_x+bearing_x, gauge_center_y+bearing_y);
+      it.filled_circle(wind_gauge_center_x, gauge_center_y, gauge_radius-gauge_thickness-4, COLOR_OFF);
+      // Wind Symbol
+      it.image(wind_gauge_center_x - 14, gauge_icon_height, id(wind_small));
+
+      char* current_temp;
+      char* high_low_temps;
+      char* current_wind_speed;
+      char* current_humidity;
+      char* current_rain;
+      // Leave off degree symbol when temp is three digits
+      if(id(outdoor_temperature).state < 100) {
+        asprintf(&current_temp, "%.0f°", id(outdoor_temperature).state);
+      } else {
+        asprintf(&current_temp, "%.0f", id(outdoor_temperature).state);
+      }
+      asprintf(&high_low_temps, "%.0f | %.0f", id(forecast_low).state, id(forecast_high).state);
+      asprintf(&current_wind_speed, "%.1f", id(wind_speed).state);
+      asprintf(&current_humidity, "%.0f", id(outdoor_humidity).state);
+      asprintf(&current_rain, "%.1f", id(rain_daily).state);
+
+      it.print(current_temp_x, current_temp_y, id(roboto_bold_100), TextAlign::CENTER, current_temp);
+      it.print(high_low_x, high_low_y, id(roboto_bold_24), TextAlign::CENTER, high_low_temps);
+      it.print(humidity_gauge_center_x, gauge_main_text_height, id(roboto_bold_24), TextAlign::CENTER, current_humidity);
+      it.print(humidity_gauge_center_x, gauge_sub_text_height, id(roboto_regular_12), TextAlign::CENTER, "percent");
+      it.print(rain_gauge_center_x, gauge_main_text_height, id(roboto_bold_24), TextAlign::CENTER, current_rain);
+      it.print(rain_gauge_center_x, gauge_sub_text_height, id(roboto_regular_12), TextAlign::CENTER, "mm today");
+      it.print(wind_gauge_center_x, gauge_main_text_height, id(roboto_bold_24), TextAlign::CENTER, current_wind_speed);
+      it.print(wind_gauge_center_x, gauge_sub_text_height, id(roboto_regular_12), TextAlign::CENTER, "km/h");
+
+
+      ////////
+      // Date
+      //
+      #define notification_vector id(notification_nums)
+      #define notification_count (notification_vector.size())
+      int date_center_y = notification_count > 0 || id(show_indoor_temp).state ? 230 : 160;
+      #define month_top_y date_center_y
+      #define weekday_bottom_y (date_center_y + 10)
+
+      int date_left_x = 650;
+      int month_right_x = date_left_x - 10;
+      int weekday_right_x = month_right_x;
+
+      char month_buf[80];
+      char weekday_buf[80];
+      char* date_buf;
+      if(id(homeassistant_time).now().is_valid()) {
+        id(homeassistant_time).now().strftime(month_buf,80,"%B");
+        id(homeassistant_time).now().strftime(weekday_buf,80,"%A");
+        asprintf(&date_buf, "%i", id(homeassistant_time).now().day_of_month);
+      } else { //Temp dates if date isn't ready
+        sprintf(month_buf, "%s", "January");
+        sprintf(weekday_buf, "%s", "Thursday");
+        asprintf(&date_buf, "%s", "1");
+      }
+
+      // Determine bounds to center text on right panel
+      int weekday_x_start, weekday_y_start;
+      int date_x_start, date_y_start;
+      int month_x_start, month_y_start;
+      int weekday_width, weekday_height;
+      int date_width, date_height;
+      int month_width, month_height;
+      it.get_text_bounds(weekday_right_x, weekday_bottom_y, weekday_buf, id(roboto_bold_48), TextAlign::BOTTOM_RIGHT, &weekday_x_start, &weekday_y_start, &weekday_width, &weekday_height);
+      it.get_text_bounds(month_right_x, month_top_y, month_buf, id(roboto_regular_36), TextAlign::TOP_RIGHT, &month_x_start, &month_y_start, &month_width, &month_height);
+      it.get_text_bounds(date_left_x, date_center_y, date_buf,  id(roboto_bold_100), TextAlign::CENTER_LEFT, &date_x_start, &date_y_start, &date_width, &date_height);
+      int date_leftmost_x = min(month_x_start, weekday_x_start);
+      int date_rightmost_x = date_x_start + date_width;
+      int total_date_width = date_rightmost_x - date_leftmost_x;
+      // Adjust left x to center found boundaries
+      date_left_x = screen_width - (400 - total_date_width)/2 - date_width;
+      month_right_x = date_left_x - 10;
+      weekday_right_x = month_right_x;
+
+      it.print(weekday_right_x, weekday_bottom_y, id(roboto_bold_48), TextAlign::BOTTOM_RIGHT, weekday_buf);
+      it.print(month_right_x, month_top_y, id(roboto_regular_36), TextAlign::TOP_RIGHT, month_buf);
+      it.print(date_left_x, date_center_y, id(roboto_bold_100), TextAlign::CENTER_LEFT, date_buf);
+
+
+      ////////
+      // Wifi QR Code
+      //
+      #define wifi_icon_side_length 36
+      #define qr_code_side 132
+      #define wifi_icon_top_y (screen_height-qr_code_side-wifi_icon_side_length-2)
+      #define wifi_icon_left_y (screen_width-qr_code_side/2-wifi_icon_side_length/2)
+      #define wifi_box_vertical_line_x (screen_width-qr_code_side-4)
+      #define wifi_icon_top_margin_y (wifi_icon_top_y-4)
+
+      if(id(show_qr_code).state) {
+        it.image(wifi_icon_left_y, wifi_icon_top_y, id(wifi_title));
+        it.image(it.get_width()-qr_code_side, it.get_height()-qr_code_side, id(wifi_qr));
+        // Divider line left of QR
+        it.line(wifi_box_vertical_line_x, wifi_icon_top_margin_y, wifi_box_vertical_line_x, it.get_height());
+      }
+
+      // Dividers around date
+      // Bottom
+      it.line(it.get_width()/2, wifi_icon_top_margin_y, it.get_width(), wifi_icon_top_margin_y);
+      // Top
+      #define date_top_margin_y (weekday_y_start - (wifi_icon_top_margin_y - (month_y_start + month_height)) + 4)
+      if (notification_count > 0 || id(show_indoor_temp).state)
+        it.line(it.get_width()/2, date_top_margin_y, it.get_width(), date_top_margin_y);
+
+
+      ////////
+      // Upcoming events block
+      //
+      #define event_icon_side_length 36
+      #define event_block_left_x (screen_width/2)
+      int event_block_right_x = id(show_qr_code).state ? wifi_box_vertical_line_x : screen_width;
+      #define event_block_width (event_block_right_x - event_block_left_x)
+
+
+      #define event_title_icon_x (event_block_left_x + event_block_width/2 - event_icon_side_length/2)
+      int event_item_left_x = (screen_width/2 + 4);
+
+      #define event_date_left_x (event_item_left_x + event_icon_side_length + 12)
+      #define event_text_left_x (event_date_left_x + 24)
+      #define event_first_item_top_y (screen_height - qr_code_side)
+      #define event_item_y_spacing ((((screen_height - event_first_item_top_y) - event_icon_side_length*3 - 12)/2) + event_icon_side_length)
+
+      it.image(event_title_icon_x, wifi_icon_top_y, id(event_title));
+
+      esphome::text_sensor::TextSensor* event_dates[3] = {
+        event_1_date,
+        event_2_date,
+        event_3_date
+      };
+      esphome::text_sensor::TextSensor* event_icons[3] = {
+        event_1_icon,
+        event_2_icon,
+        event_3_icon
+      };
+      esphome::text_sensor::TextSensor* event_names[3] = {
+        event_1_name,
+        event_2_name,
+        event_3_name
+      };
+
+      int event_item_top_y = event_first_item_top_y;
+      #define evt_icon_str id(&event_icons[j])->state
+      #define evt_name_str id(&event_names[j])->state
+      #define evt_date_str id(&event_dates[j])->state
+      // Determine text bounds and align to center
+      int max_event_x = event_text_left_x;
+      for(int j=0; j<sizeof(event_dates)/sizeof(event_dates[0]); j++) {
+        int event_text_x_start, event_text_y_start, event_text_width, event_text_height;
+        it.get_text_bounds(event_text_left_x, event_item_top_y, evt_name_str.c_str(),  id(roboto_regular_20), TextAlign::CENTER_LEFT, &event_text_x_start, &event_text_y_start, &event_text_width, &event_text_height);
+        max_event_x = max_event_x > (event_text_left_x + event_text_width) ? max_event_x : (event_text_left_x + event_text_width);
+      }
+      #define max_event_item_width (max_event_x - event_item_left_x)
+      event_item_left_x = event_block_left_x + (event_block_width - max_event_item_width)/2;
+      for(int j=0; j<sizeof(event_dates)/sizeof(event_dates[0]); j++) {
+        int event_text_center_y = (event_item_top_y + (event_icon_side_length/2));
+        // Ensure icon is in the map first
+        if(event_icon_map.count(evt_icon_str)) {
+          it.image(event_item_left_x, event_item_top_y, id(&event_icon_map[evt_icon_str]));
+        }  
+        if(evt_date_str.length() == 5) {    
+          if(month_map.count(evt_date_str.substr(0,2))) {
+            it.print(event_date_left_x, event_text_center_y, id(roboto_regular_12), TextAlign::BOTTOM_CENTER, month_map[evt_date_str.substr(0,2)]);
+          }
+          it.print(event_date_left_x, event_text_center_y, id(roboto_regular_12), TextAlign::TOP_CENTER, evt_date_str.substr(3,2).c_str());
+        }
+        it.print(event_text_left_x, event_text_center_y, id(roboto_regular_20), TextAlign::CENTER_LEFT, evt_name_str.c_str());
+        event_item_top_y += event_item_y_spacing;
+      }
+
+
+      ////////
+      // Indoor climate
+      //
+      #define climate_icon_side_length 24
+      #define temp_humidity_spacing 40
+      //#define temp_icon_left_x 720
+
+      #define floor_icon_side_length 36
+      #define floor_icon_left_x ((screen_width/2) + 4 )
+      #define floor_icon_top_y (climate_icon_top_y + climate_icon_side_length)
+      #define floor_icon_y_spacing (floor_icon_side_length + 4)
+      #define floor_temp_right_x (floor_icon_left_x + temp_humidity_spacing + floor_icon_side_length - 4)
+      #define floor_humidity_right_x (floor_temp_right_x + temp_humidity_spacing)
+      
+      #define temp_icon_left_x (floor_icon_left_x + floor_icon_side_length + 12)
+      #define humidity_icon_left_x (temp_icon_left_x + temp_humidity_spacing)
+      #define climate_icon_top_y 8
+
+      if (id(show_indoor_temp).state) {
+        it.image(temp_icon_left_x, climate_icon_top_y, id(thermometer_small));
+        it.image(humidity_icon_left_x, climate_icon_top_y, id(humidity_small));
+
+        esphome::sensor::Sensor* indoor_temps[3] {
+          schlafzimmer_temperature,
+          badezimmer_temperature,
+          wohnzimmer_temperature
+        };
+        esphome::sensor::Sensor* indoor_humidity[3] {
+          schlafzimmer_humidity,
+          badezimmer_humidity,
+          wohnzimmer_humidity
+        };
+        esphome::display::BaseImage* indoor_climate_icons[3] {
+          home_floor_2,
+          home_floor_1,
+          home_floor_b
+        };
+
+        for (int k=0; k<3; k++) {
+          #define floor_item_current_top_y (floor_icon_top_y + floor_icon_y_spacing*k)
+          it.image(floor_icon_left_x, floor_item_current_top_y, id(&indoor_climate_icons[k]));
+          char* floor_temp;
+          asprintf(&floor_temp, "%.0f", id(&indoor_temps[k])->state);
+          char* floor_humidity;
+          asprintf(&floor_humidity, "%.0f", id(&indoor_humidity[k])->state);
+          it.print(floor_temp_right_x, floor_item_current_top_y, id(roboto_bold_24), TextAlign::TOP_RIGHT, floor_temp);
+          it.print(floor_humidity_right_x, floor_item_current_top_y, id(roboto_bold_24), TextAlign::TOP_RIGHT, floor_humidity);
+        }
+
+        // Divider line left of climate
+        #define climate_left_margin_x (floor_icon_left_x - 4)
+        #define climate_right_margin_x ((screen_width/2) + 128)
+        it.line(climate_right_margin_x, date_top_margin_y, climate_right_margin_x, 0);
+      }
+
+
+      ////////
+      // Notifications
+      //
+      #define notification_lg_icon_side 128
+      #define notification_md_icon_side 64
+      #define notification_sm_icon_side 36
+      #define notification_circle_margin 2
+      int notification_area_left_x = id(show_indoor_temp).state ? climate_right_margin_x : screen_width / 2;
+      #define notification_area_right_x screen_width
+      #define notification_area_top_y 0
+      #define notification_area_bottom_y date_top_margin_y
+      #define notification_area_width (notification_area_right_x - notification_area_left_x)
+      #define notification_area_height (notification_area_bottom_y - notification_area_top_y)
+      int notification_icon_x_margin = id(show_indoor_temp).state ? 4 : 16;
+      #define notification_icon_y_margin 4
+
+      //int icon_size = notification_lg_icon_side;
+      // Start with medium icons(?)
+      int icon_size = notification_md_icon_side;
+      int notification_icon_map_idx_skip = notification_type_count;
+      int icon_spacing = 0;
+      int icon_rows = 1;
+      if(notification_count > 0) {
+        if(notification_count > 2) {
+          icon_size = notification_md_icon_side;
+          notification_icon_map_idx_skip = notification_type_count;
+        }
+        if(notification_count > 4) {
+          icon_rows = 2;
+          icon_size = notification_md_icon_side;
+        }
+        if(notification_count > 8) {
+          icon_size = notification_sm_icon_side;
+          notification_icon_map_idx_skip = notification_type_count*2;
+        }
+        icon_spacing = (notification_area_width - (icon_size*(notification_count/icon_rows)))/((notification_count/icon_rows)-1);
+        int icon_y = (notification_area_height - icon_size*icon_rows - notification_icon_y_margin*(icon_rows-1))/2;
+        #define max_icons_per_row ((notification_count/icon_rows) + (notification_count % 2))
+        int start_icon_idx = 0;
+
+        for (int r=0; r < icon_rows; r++) {
+          int row_icon_count = (start_icon_idx + max_icons_per_row <= notification_count) ? max_icons_per_row : (notification_count - start_icon_idx);
+          #define row_width (row_icon_count * icon_size + (row_icon_count-1) * notification_icon_x_margin)
+          int icon_x = (notification_area_left_x + (notification_area_width - row_width)/2);
+          for (int m = start_icon_idx; m < start_icon_idx + row_icon_count; m++) {
+            #define notification_icon_image id(&notification_icon_map[notification_vector[m] + notification_icon_map_idx_skip])
+            it.image(icon_x, icon_y, notification_icon_image);
+            icon_x += icon_size + notification_icon_x_margin;
+          }
+          icon_y += icon_size + notification_icon_y_margin;
+          start_icon_idx += row_icon_count;
+        }
+      }

@@ -526,8 +526,9 @@ image:
     id: recycle_large
   - file: "icon-bmp/notification-large/robot-vacuum-variant.bmp"
     id: robot_vacuum_variant_large
-  - file: "icon-bmp/notification-large/trash-can-outline.bmp"
+  - file: "mdi:air-humidifier-off"
     id: trash_can_outline_large
+    resize: 128x128
   - file: "icon-bmp/notification-large/washing-machine-alert.bmp"
     id: washing_machine_alert_large
   - file: "icon-bmp/notification-large/wifi-alert.bmp"
@@ -545,8 +546,9 @@ image:
     id: recycle_med
   - file: "icon-bmp/notification-med/robot-vacuum-variant.bmp"
     id: robot_vacuum_variant_med
-  - file: "icon-bmp/notification-med/trash-can-outline.bmp"
+  - file: "mdi:air-humidifier-off"
     id: trash_can_outline_med
+    resize: 64x64
   - file: "icon-bmp/notification-med/washing-machine-alert.bmp"
     id: washing_machine_alert_med
   - file: "icon-bmp/notification-med/wifi-alert.bmp"
@@ -564,8 +566,9 @@ image:
     id: recycle_small
   - file: "icon-bmp/notification-small/robot-vacuum-variant.bmp"
     id: robot_vacuum_variant_small
-  - file: "icon-bmp/notification-small/trash-can-outline.bmp"
+  - file: "mdi:air-humidifier-off"
     id: trash_can_outline_small
+    resize: 32x32
   - file: "icon-bmp/notification-small/washing-machine-alert.bmp"
     id: washing_machine_alert_small
   - file: "icon-bmp/notification-small/wifi-alert.bmp"
@@ -652,7 +655,7 @@ display:
     spi_id: waveshare_spi
     model: 7.50inV2alt
     #model: 7.50inV2
-    rotation: 180
+    #rotation: 180
     #reset_duration: 500ms
     update_interval: never
     lambda: |-
